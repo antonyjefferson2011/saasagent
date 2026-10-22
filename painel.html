@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Biblioteca do Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-page">
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h1>Acesso Restrito</h1>
+            <p>Digite sua senha para gerenciar seus links.</p>
+            
+            <form id="login-form">
+                <input type="password" id="password-input" placeholder="Sua senha secreta" autocomplete="off">
+                <button type="submit">Acessar Painel</button>
+            </form>
+            <span id="login-error" class="error-text"></span>
+        </div>
+    </div>
+
+    <!-- TELA DO PAINEL -->
+    <div id="dashboard-screen" class="dashboard-screen hidden">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h2>Meus Links</h2>
+                <p>Gerencie os botões do seu biossite</p>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" target="_blank" class="btn-preview" title="Ver site"><i class="fas fa-eye"></i> Ver Site</a>
+                <button onclick="logout()" class="btn-logout" title="Sair"><i class="fas fa-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <section class="form-section">
+                <h3><i class="fas fa-plus"></i> Adicionar Novo Link</h3>
+                <form id="link-form" class="link-form">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>O que você está vendendo?</label>
+                            <input type="text" id="link-title" placeholder="Ex: E-book Salgados Lucrativos" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Ícone do Botão</label>
+                            <select id="link-icon">
+                                <option value="fa-book">📖 E-book / PDF</option>
+                                <option value="fa-graduation-cap">🎓 Curso</option>
+                                <option value="fa-shopping-cart">🛒 Loja / Produto</option>
+                                <option value="fa-whatsapp">💬 WhatsApp</option>
+                                <option value="fa-link">🔗 Link Genérico</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Link da Kiwify (ou outro destino)</label>
+                        <input type="url" id="link-url" placeholder="https://pay.kiwify.com.br/..." required>
+                    </div>
+                    <button type="submit" class="btn-save"><i class="fas fa-check"></i> Salvar Link</button>
+                </form>
+            </section>
+
+            <section class="list-section">
+                <h3>Links Ativos</h3>
+                <div id="admin-links-list" class="links-grid">
+                    <!-- O JavaScript injeta os cards aqui -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        initAdminPanel();
+    </script>
+</body>
+</html>
