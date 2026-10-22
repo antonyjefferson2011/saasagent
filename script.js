@@ -1,48 +1,55 @@
 // ==========================================
-// CONFIGURAÇÕES DO SUPABASE (COLOQUE AS SUAS AQUI)
+// CONFIGURAÇÕES DO FIREBASE
 // ==========================================
-const SUPABASE_URL = 'SUA_URL_DO_SUPABASE_AQUI'; // Ex: https://xyz.supabase.co
-const SUPABASE_KEY = 'SUA_CHAVE_ANON_PUBLIC_AQUI'; // Ex: eyJhbGci...
-const ADMIN_PASSWORD = "admin123"; // Sua senha do painel
+const firebaseConfig = {
+  apiKey: "AIzaSyBzqQmGpMz-7AYM7_Mpt2owpmf6BXjW1yk",
+  authDomain: "nucisz.firebaseapp.com",
+  databaseURL: "https://nucisz-default-rtdb.firebaseio.com",
+  projectId: "nucisz",
+  storageBucket: "nucisz.firebasestorage.app",
+  messagingSenderId: "90824519141",
+  appId: "1:90824519141:web:8ec5d6686c07cbbf94930c",
+  measurementId: "G-BZ4S7Q3NM2"
+};
 
-// Inicializa o cliente Supabase
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Inicializa o Firebase (usando a versão compatível via CDN)
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const ADMIN_PASSWORD = "admin123"; // MUDE SUA SENHA AQUI
 
 // ==========================================
 // FUNÇÕES DA PÁGINA PÚBLICA (index.html)
 // ==========================================
-async function renderPublicPage() {
+function renderPublicPage() {
     const container = document.getElementById("links-container");
     if (!container) return;
 
     container.innerHTML = '<p style="text-align:center; color:#fff;">Carregando...</p>';
 
-    // Busca os links no banco de dados Supabase
-    const { data: links, error } = await supabaseClient
-        .from('links')
-        .select('*')
-        .order('created_at', { ascending: true });
+    // Busca os links no Realtime Database
+    database.ref('links').once('value').then((snapshot) => {
+        const data = snapshot.val();
+        container.innerHTML = "";
 
-    if (error) {
-        console.error("Erro ao buscar links:", error);
+        if (!data) {
+            container.innerHTML = '<p style="text-align:center; color:#fff;">Nenhum link cadastrado.</p>';
+            return;
+        }
+
+        // O Firebase retorna um objeto, transformamos em array
+        const links = Object.values(data);
+
+        links.forEach(link => {
+            const a = document.createElement("a");
+            a.href = link.url;
+            a.className = "link-card";
+            a.target = "_blank";
+            a.innerHTML = `<i class="fas ${link.icon || 'fa-link'}"></i> <span>${link.title}</span>`;
+            container.appendChild(a);
+        });
+    }).catch((error) => {
+        console.error(error);
         container.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Erro ao carregar os links.</p>';
-        return;
-    }
-
-    container.innerHTML = "";
-
-    if (links.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#fff;">Nenhum link cadastrado.</p>';
-        return;
-    }
-
-    links.forEach(link => {
-        const a = document.createElement("a");
-        a.href = link.url;
-        a.className = "link-card";
-        a.target = "_blank";
-        a.innerHTML = `<i class="fas ${link.icon || 'fa-link'}"></i> <span>${link.title}</span>`;
-        container.appendChild(a);
     });
 }
 
@@ -71,7 +78,7 @@ function initAdminPanel() {
     // Lógica de Adicionar Link
     const linkForm = document.getElementById("link-form");
     if (linkForm) {
-        linkForm.addEventListener("submit", async (e) => {
+        linkForm.addEventListener("submit", (e) => {
             e.preventDefault();
             
             const btn = linkForm.querySelector("button");
@@ -83,26 +90,25 @@ function initAdminPanel() {
             const url = document.getElementById("link-url").value;
             const icon = document.getElementById("link-icon").value;
 
-            // Insere o novo link no Supabase
-            const { error } = await supabaseClient
-                .from('links')
-                .insert([{ title: title, url: url, icon: icon }]);
-
-            if (error) {
+            // Salva no Firebase
+            database.ref('links').push({
+                title: title,
+                url: url,
+                icon: icon,
+                createdAt: Date.now()
+            }).then(() => {
+                linkForm.reset();
+                btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+                renderAdminList();
+            }).catch((error) => {
                 alert("Erro ao salvar: " + error.message);
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-                return;
-            }
-
-            linkForm.reset();
-            btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }, 2000);
-            
-            renderAdminList();
+            });
         });
     }
 
@@ -127,57 +133,53 @@ function logout() {
     window.location.reload();
 }
 
-async function renderAdminList() {
+function renderAdminList() {
     const list = document.getElementById("admin-links-list");
     if (!list) return;
 
     list.innerHTML = "<p>Carregando...</p>";
 
-    const { data: links, error } = await supabaseClient
-        .from('links')
-        .select('*')
-        .order('created_at', { ascending: true });
+    database.ref('links').once('value').then((snapshot) => {
+        const data = snapshot.val();
+        list.innerHTML = "";
 
-    if (error) {
-        list.innerHTML = "<p>Erro ao carregar a lista.</p>";
-        return;
-    }
+        if (!data) {
+            list.innerHTML = '<p class="empty-state">Nenhum link cadastrado.</p>';
+            return;
+        }
 
-    list.innerHTML = "";
+        // Pega as chaves (IDs gerados pelo Firebase) e os valores
+        const entries = Object.entries(data);
 
-    if (links.length === 0) {
-        list.innerHTML = '<p class="empty-state">Nenhum link cadastrado.</p>';
-        return;
-    }
+        // Ordena pelo mais antigo (createdAt)
+        entries.sort((a, b) => a[1].createdAt - b[1].createdAt);
 
-    links.forEach((link) => {
-        const div = document.createElement("div");
-        div.className = "admin-link-card";
-        div.innerHTML = `
-            <div class="link-info">
-                <div class="link-icon"><i class="fas ${link.icon || 'fa-link'}"></i></div>
-                <div class="link-details">
-                    <strong>${link.title}</strong>
-                    <span>${link.url}</span>
+        entries.forEach(([id, link]) => {
+            const div = document.createElement("div");
+            div.className = "admin-link-card";
+            div.innerHTML = `
+                <div class="link-info">
+                    <div class="link-icon"><i class="fas ${link.icon || 'fa-link'}"></i></div>
+                    <div class="link-details">
+                        <strong>${link.title}</strong>
+                        <span>${link.url}</span>
+                    </div>
                 </div>
-            </div>
-            <button onclick="removeLink(${link.id})" class="btn-delete"><i class="fas fa-trash-alt"></i></button>
-        `;
-        list.appendChild(div);
+                <button onclick="removeLink('${id}')" class="btn-delete"><i class="fas fa-trash-alt"></i></button>
+            `;
+            list.appendChild(div);
+        });
+    }).catch((error) => {
+        list.innerHTML = "<p>Erro ao carregar a lista.</p>";
     });
 }
 
-async function removeLink(id) {
+function removeLink(id) {
     if (confirm("Excluir este link?")) {
-        const { error } = await supabaseClient
-            .from('links')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
+        database.ref('links/' + id).remove().then(() => {
+            renderAdminList();
+        }).catch((error) => {
             alert("Erro ao excluir: " + error.message);
-            return;
-        }
-        renderAdminList();
+        });
     }
 }
